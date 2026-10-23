@@ -3963,5 +3963,88 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
 </script>
+
+<!-- Aviso "Instalar na Tela de Início" (só aparece no iPhone/iPad quando aberto pelo navegador) -->
+<style>
+  .inst-banner{
+    position:fixed;left:50%;transform:translateX(-50%);z-index:10000;
+    width:min(440px,calc(100% - 24px));
+    background:#1B1714;border:1px solid var(--line-strong);border-radius:14px;
+    box-shadow:0 12px 40px rgba(0,0,0,0.6);padding:16px 18px 14px;color:var(--text);
+    font-size:14px;line-height:1.45;animation:instIn .35s ease;
+  }
+  .inst-banner.top{top:calc(26px + env(safe-area-inset-top));}
+  .inst-banner.bottom{bottom:calc(14px + env(safe-area-inset-bottom));}
+  @keyframes instIn{from{opacity:0;transform:translate(-50%,10px);}to{opacity:1;transform:translate(-50%,0);}}
+  .inst-head{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+  .inst-head img{width:44px;height:44px;border-radius:10px;flex:none;}
+  .inst-head strong{display:block;color:var(--gold);font-family:Georgia,serif;font-size:16px;}
+  .inst-head span{font-size:12.5px;color:var(--text-soft);}
+  .inst-close{margin-left:auto;align-self:flex-start;background:none;border:none;color:var(--text-faint);font-size:22px;line-height:1;cursor:pointer;padding:0 2px;}
+  .inst-steps{margin:0;padding-left:20px;}
+  .inst-steps li{margin:5px 0;}
+  .inst-ico{display:inline-flex;vertical-align:-4px;width:20px;height:20px;align-items:center;justify-content:center;
+    border:1px solid var(--line-strong);border-radius:5px;margin:0 2px;}
+  .inst-ico svg{width:13px;height:13px;stroke:var(--gold);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .inst-arrow{position:fixed;z-index:10000;width:0;height:0;border:11px solid transparent;}
+  .inst-arrow.up{top:calc(2px + env(safe-area-inset-top));right:84px;border-bottom-color:var(--gold);border-top:0;}
+  .inst-arrow.down{bottom:calc(2px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);border-top-color:var(--gold);border-bottom:0;}
+</style>
+<script>
+(function () {
+  const ua = navigator.userAgent;
+  const isIPad = /iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isIOS = isIPad || /iPhone|iPod/.test(ua);
+  const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  if (!isIOS || standalone) return;
+
+  const KEY = 'adja_inst_dispensado';
+  try { const t = Number(localStorage.getItem(KEY)); if (t && Date.now() - t < 3 * 864e5) return; } catch (e) {}
+
+  // Chrome/Firefox/Edge no iOS e navegadores internos (WhatsApp, Instagram...) não instalam bem: pedir Safari
+  const notSafari = /CriOS|FxiOS|EdgiOS|OPiOS|FBAN|FBAV|Instagram|WhatsApp|Line\//.test(ua) || !/Safari/.test(ua);
+
+  const shareIco = '<span class="inst-ico"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/></svg></span>';
+  const plusIco = '<span class="inst-ico"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg></span>';
+  const icon = (document.querySelector('link[rel="apple-touch-icon"]') || {}).href || '';
+
+  const steps = notSafari
+    ? `<ol class="inst-steps">
+         <li>Copie o endereço desta página.</li>
+         <li>Abra o <b>Safari</b> e cole o endereço.</li>
+         <li>Lá aparecerá este aviso com os passos para instalar.</li>
+       </ol>`
+    : `<ol class="inst-steps">
+         <li>Toque em <b>Compartilhar</b> ${shareIco} ${isIPad ? 'no alto da tela, ao lado do endereço' : 'na barra do Safari'}
+             <span style="color:var(--text-faint)">(se não aparecer, toque em <b>•••</b>)</span>.</li>
+         <li>Escolha <b>Adicionar à Tela de Início</b> ${plusIco} e toque em <b>Adicionar</b>.</li>
+       </ol>`;
+
+  function show() {
+    const box = document.createElement('div');
+    box.className = 'inst-banner ' + (isIPad ? 'top' : 'bottom');
+    box.innerHTML = `
+      <div class="inst-head">
+        ${icon ? `<img src="${icon}" alt="">` : ''}
+        <div><strong>Instale o app ADJA Docs</strong>
+          <span>${notSafari ? 'Para instalar, abra no Safari' : 'Ícone na Tela de Início, tela cheia e funciona offline'}</span></div>
+        <button class="inst-close" aria-label="Fechar">×</button>
+      </div>${steps}`;
+    document.body.appendChild(box);
+
+    let arrow = null;
+    if (!notSafari) {
+      arrow = document.createElement('div');
+      arrow.className = 'inst-arrow ' + (isIPad ? 'up' : 'down');
+      document.body.appendChild(arrow);
+    }
+    box.querySelector('.inst-close').addEventListener('click', () => {
+      box.remove(); if (arrow) arrow.remove();
+      try { localStorage.setItem(KEY, String(Date.now())); } catch (e) {}
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
+})();
+</script>
 </body>
 </html>
